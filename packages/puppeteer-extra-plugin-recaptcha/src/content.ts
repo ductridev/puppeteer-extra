@@ -216,6 +216,10 @@ export class RecaptchaContentScript {
 
   private getClients() {
     // Bail out early if there's no indication of recaptchas
+    this.log('getClients', {
+      hasCfg: !!window.___grecaptcha_cfg,
+      clients: Object.keys(window.___grecaptcha_cfg?.clients || {})
+    })
     if (!window || !window.__google_recaptcha_client) return
     if (!window.___grecaptcha_cfg || !window.___grecaptcha_cfg.clients) {
       return

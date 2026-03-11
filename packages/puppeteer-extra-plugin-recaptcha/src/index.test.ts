@@ -1,6 +1,8 @@
 import test from 'ava'
 
 import RecaptchaPlugin from './index'
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 // import * as types from './types'
 
 // import { Puppeteer } from './puppeteer-mods'
@@ -88,7 +90,7 @@ test('will detect active hCAPTCHA challenges', async t => {
   for (const url of urls) {
     await page.goto(url, { waitUntil: 'networkidle0' })
     await page.evaluate(() => (window as any).hcaptcha.execute()) // trigger challenge popup
-    await page.waitForTimeout(2 * 1000)
+    await delay(2 * 1000)
     await page.evaluate(() =>
       document
         .querySelector(`[data-hcaptcha-widget-id]:not([src*='invisible'])`)

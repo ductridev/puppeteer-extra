@@ -4,6 +4,8 @@ import RecaptchaPlugin from './index'
 
 import { addExtra } from 'puppeteer-extra'
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 const PUPPETEER_ARGS = ['--no-sandbox', '--disable-setuid-sandbox']
 
 const getBrowser = async (url = '', opts = {}) => {
@@ -195,19 +197,11 @@ test('will correctly detect v2-invisible-auto.html - active challenge', async t 
   await page.setUserAgent('BOT') // we want to trigger the invisible recaptcha challenge window
   await page.goto(url, { waitUntil: 'networkidle2' })
 
-  if (page.waitForTimeout) {
-    await page.waitForTimeout(1000)
-  } else {
-    await page.waitFor(1000)
-  }
+  await delay(1000)
 
   await page.click('#submit')
 
-  if (page.waitForTimeout) {
-    await page.waitForTimeout(1000)
-  } else {
-    await page.waitFor(1000)
-  }
+  await delay(1000)
 
   if (page.url() !== url) {
     // we didn't get a challenge

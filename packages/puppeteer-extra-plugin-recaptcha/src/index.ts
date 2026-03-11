@@ -1,12 +1,28 @@
 import { PuppeteerExtraPlugin } from 'puppeteer-extra-plugin'
 
-import { Browser, Frame, Page } from 'puppeteer'
+import { Browser, Frame, Page, CDPSession } from 'puppeteer'
 
 import * as types from './types'
 
 import { RecaptchaContentScript } from './content'
 import { HcaptchaContentScript } from './content-hcaptcha'
 import * as TwoCaptcha from './provider/2captcha'
+
+/**
+ * Get a CDP session for the page, works with both Puppeteer and Playwright
+ */
+async function getCDPSession(page: Page | Frame): Promise<CDPSession> {
+  // Puppeteer has createCDPSession on the page object
+  if ('createCDPSession' in page && typeof page.createCDPSession === 'function') {
+    return page.createCDPSession()
+  }
+  // Playwright has context().newCDPSession(page)
+  if ('context' in page && typeof (page as any).context === 'function') {
+    const context = await (page as any).context()
+    return context.newCDPSession(page)
+  }
+  throw new Error('Could not create CDP session: unsupported page type')
+}
 
 export const BuiltinSolutionProviders: types.SolutionProvider[] = [
   {
@@ -174,12 +190,25 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
       }
     }
     // Even without a recaptcha script tag we're trying, just in case.
-    const resultRecaptcha: types.FindRecaptchasResult = (await page.evaluate(
+    const client = await getCDPSession(page)
+
+    async function evalMainWorld(script: string) {
+      const res = await client.send('Runtime.evaluate', {
+        expression: script,
+        awaitPromise: true,
+        returnByValue: true
+      })
+
+      return res.result?.value
+    }
+
+    const resultRecaptcha: types.FindRecaptchasResult = await evalMainWorld(
       this._generateContentScript('recaptcha', 'findRecaptchas')
-    )) as any
-    const resultHcaptcha: types.FindRecaptchasResult = (await page.evaluate(
+    )
+
+    const resultHcaptcha: types.FindRecaptchasResult = await evalMainWorld(
       this._generateContentScript('hcaptcha', 'findRecaptchas')
-    )) as any
+    )
 
     const filterResults = this._filterRecaptchas(resultRecaptcha.captchas)
     this.debug(
@@ -251,21 +280,36 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
   ) {
     this.debug('enterRecaptchaSolutions', { solutions })
 
+    const cdp = await getCDPSession(page)
+
+    async function evalMain(script: string) {
+      const { result } = await cdp.send("Runtime.evaluate", {
+        expression: script,
+        awaitPromise: true,
+        returnByValue: true
+      })
+
+      return result?.value
+    }
+
     const hasRecaptcha = !!solutions.find(s => s._vendor === 'recaptcha')
+
     const solvedRecaptcha: types.EnterRecaptchaSolutionsResult = hasRecaptcha
-      ? ((await page.evaluate(
-          this._generateContentScript('recaptcha', 'enterRecaptchaSolutions', {
-            solutions
-          })
-        )) as any)
+      ? await evalMain(
+        this._generateContentScript('recaptcha', 'enterRecaptchaSolutions', {
+          solutions
+        })
+      )
       : { solved: [] }
+
     const hasHcaptcha = !!solutions.find(s => s._vendor === 'hcaptcha')
+
     const solvedHcaptcha: types.EnterRecaptchaSolutionsResult = hasHcaptcha
-      ? ((await page.evaluate(
-          this._generateContentScript('hcaptcha', 'enterRecaptchaSolutions', {
-            solutions
-          })
-        )) as any)
+      ? await evalMain(
+        this._generateContentScript('hcaptcha', 'enterRecaptchaSolutions', {
+          solutions
+        })
+      )
       : { solved: [] }
 
     const response: types.EnterRecaptchaSolutionsResult = {
