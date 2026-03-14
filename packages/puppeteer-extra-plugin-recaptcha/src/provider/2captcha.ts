@@ -40,6 +40,140 @@ async function decodeRecaptchaAsync(
     try {
       solver.setApiKey(token)
 
+      if (vendor === 'turnstile') {
+        solver.solveTurnstile(
+          {
+            sitekey,
+            pageurl: url,
+            ...extraData
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'geetest_v4') {
+        solver.solveGeetestV4(
+          {
+            captchaId: sitekey,
+            pageurl: url
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'geetest') {
+        solver.solveGeetest(
+          {
+            gt: extraData.gt || sitekey,
+            challenge: extraData.challenge,
+            pageurl: url,
+            apiServer: extraData.apiServer
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'arkoselabs') {
+        solver.solveArkoseLabs(
+          {
+            publickey: sitekey,
+            pageurl: url,
+            ...extraData
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'amazon_waf') {
+        solver.solveAmazonWaf(
+          {
+            sitekey,
+            pageurl: url,
+            iv: extraData.iv,
+            context: extraData.context
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'yandex') {
+        solver.solveYandex(
+          {
+            sitekey,
+            pageurl: url
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'capy') {
+        solver.solveCapy(
+          {
+            sitekey,
+            pageurl: url,
+            apiServer: extraData.apiServer
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'lemin') {
+        solver.solveLemin(
+          {
+            captchaId: sitekey,
+            pageurl: url,
+            divId: extraData.divId,
+            apiServer: extraData.apiServer
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'keycaptcha') {
+        solver.solveKeyCaptcha(
+          {
+            s_s_c_user_id: extraData.s_s_c_user_id,
+            s_s_c_session_id: extraData.s_s_c_session_id,
+            s_s_c_web_server_sign: extraData.s_s_c_web_server_sign,
+            s_s_c_web_server_sign2: extraData.s_s_c_web_server_sign2,
+            pageurl: url
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
+      if (vendor === 'normal') {
+        solver.solveNormal(
+          {
+            body: extraData.body,
+            pageurl: url,
+            textinstructions: extraData.textinstructions,
+            imginstructions: extraData.imginstructions
+          },
+          opts,
+          cb
+        )
+        return
+      }
+
       let method = 'userrecaptcha'
       if (vendor === 'hcaptcha') {
         method = 'hcaptcha'
@@ -77,6 +211,16 @@ async function getSolution(
       throw new Error('Missing data in captcha')
     }
     solution.id = captcha.id
+    // Copy widgetId for Turnstile widgets (needed for solution application)
+    if (captcha.widgetId !== undefined) {
+      solution.widgetId = captcha.widgetId
+      debug('Copied widgetId from captcha:', captcha.widgetId)
+    }
+    // Copy fingerprint for race condition detection (Turnstile)
+    if (captcha.fingerprint) {
+      solution.fingerprint = captcha.fingerprint
+      debug('Copied fingerprint from captcha:', captcha.fingerprint)
+    }
     solution.requestAt = new Date()
     debug('Requesting solution..', solution)
     const extraData = {}
@@ -89,12 +233,24 @@ async function getSolution(
     if (opts.useEnterpriseFlag && captcha.isEnterprise) {
       extraData['enterprise'] = 1
     }
-    
+
+    // Turnstile-specific fields
+    // cData maps to 'data' parameter in2captcha API
+    if (captcha.cData) {
+      extraData['data'] = captcha.cData
+      debug('Turnstile cData:', captcha.cData)
+    }
+    // chlPageData maps to 'pagedata' parameter in2captcha API
+    if (captcha.chlPageData) {
+      extraData['pagedata'] = captcha.chlPageData
+      debug('Turnstile chlPageData:', captcha.chlPageData)
+    }
+
     if (process.env['2CAPTCHA_PROXY_TYPE'] && process.env['2CAPTCHA_PROXY_ADDRESS']) {
          extraData['proxytype'] = process.env['2CAPTCHA_PROXY_TYPE'].toUpperCase()
          extraData['proxy'] = process.env['2CAPTCHA_PROXY_ADDRESS']
     }
-      
+
     const { err, result, invalid } = await decodeRecaptchaAsync(
       token,
       captcha._vendor,

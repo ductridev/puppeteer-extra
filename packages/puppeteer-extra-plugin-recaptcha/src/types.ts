@@ -3,6 +3,28 @@
 // Warn: The above is EXTREMELY important for our custom page mods to be recognized by the end users typescript!
 
 /**
+ * Widget information captured by the Turnstile interceptor
+ */
+export interface TurnstileWidgetInfo {
+  captchaType: 'turnstile'
+  widgetId: number
+  inputId: string // container ID
+  sitekey: string
+  callback: string | null // global function name
+  cData: string | null
+  chlPageData: string | null
+  action: string | null
+  /** Navigation ID when widget was created (for race condition detection) */
+  navigationId?: string
+  /** Timestamp when widget was detected */
+  detectedAt?: number
+  /** Hash of cData for fingerprinting */
+  cDataHash?: string
+  /** Hash of chlPageData for fingerprinting */
+  chlPageDataHash?: string
+}
+
+/**
  * Extend window object with recaptcha things
  */
 declare global {
@@ -11,6 +33,9 @@ declare global {
     ___grecaptcha_cfg?: {
       clients?: any
     }
+    ___turnstile_widgets?: TurnstileWidgetInfo[]
+    /** Current navigation ID for race condition detection */
+    ___turnstile_nav_id?: string
   }
 }
 
@@ -46,6 +71,8 @@ export interface FindRecaptchasResult {
 export interface EnterRecaptchaSolutionsResult {
   solved: CaptchaSolved[]
   error?: any
+  /** Solutions that were invalidated due to race condition (page navigation) */
+  invalidated?: CaptchaSolution[]
 }
 export interface GetSolutionsResult {
   solutions: CaptchaSolution[]
@@ -56,9 +83,120 @@ export type SolveRecaptchasResult = FindRecaptchasResult &
   EnterRecaptchaSolutionsResult &
   GetSolutionsResult
 
-export type CaptchaVendor = 'recaptcha' | 'hcaptcha'
+export type CaptchaVendor = 'recaptcha' | 'hcaptcha' | 'turnstile' | 'geetest' | 'geetest_v4' | 'arkoselabs' | 'amazon_waf' | 'yandex' | 'capy' | 'lemin' | 'keycaptcha' | 'normal'
 
 export type CaptchaType = 'checkbox' | 'invisible' | 'score'
+
+export interface TurnstileCaptchaInfo {
+  sitekey: string
+  pageurl: string
+  action?: string
+  data?: string
+  pagedata?: string
+}
+
+export interface TurnstileCaptchaSolution {
+  token: string
+}
+
+export interface GeetestV4CaptchaInfo {
+  captchaId: string
+  pageurl: string
+}
+
+export interface GeetestV4CaptchaSolution {
+  lot_number: string
+  pass_token: string
+  gen_time: string
+  captcha_output?: string
+}
+
+export interface GeetestCaptchaInfo {
+  gt: string
+  challenge: string
+  pageurl: string
+  apiServer?: string
+}
+
+export interface GeetestCaptchaSolution {
+  challenge: string
+  validate: string
+  seccode: string
+}
+
+export interface ArkoseLabsCaptchaInfo {
+  publicKey: string
+  pageurl: string
+  surl?: string
+  data?: object
+}
+
+export interface ArkoseLabsCaptchaSolution {
+  token: string
+}
+
+export interface AmazonWafCaptchaInfo {
+  sitekey: string
+  pageurl: string
+  iv?: string
+  context?: string
+}
+
+export interface AmazonWafCaptchaSolution {
+  captchaVerification: string
+}
+
+export interface YandexCaptchaInfo {
+  sitekey: string
+  pageurl: string
+}
+
+export interface YandexCaptchaSolution {
+  token: string
+}
+
+export interface CapyCaptchaInfo {
+  sitekey: string
+  pageurl: string
+  apiServer?: string
+}
+
+export interface CapyCaptchaSolution {
+  captchakey: string
+}
+
+export interface LeminCaptchaInfo {
+  captchaId: string
+  pageurl: string
+  divId?: string
+}
+
+export interface LeminCaptchaSolution {
+  answer: string
+}
+
+export interface KeyCaptchaInfo {
+  s_s_c_user_id: string
+  s_s_c_session_id: string
+  s_s_c_web_server_sign: string
+  s_s_c_web_server_sign2: string
+  pageurl: string
+}
+
+export interface KeyCaptchaSolution {
+  token: string
+}
+
+export interface NormalCaptchaInfo {
+  body: string
+  pageurl: string
+  textinstructions?: string
+  imginstructions?: string
+}
+
+export interface NormalCaptchaSolution {
+  text: string
+}
 
 export interface CaptchaInfo {
   _vendor: CaptchaVendor
@@ -79,6 +217,14 @@ export interface CaptchaInfo {
   callback?: string | Function
   hasResponseElement?: boolean
   url?: string
+  /** Amazon WAF specific fields */
+  iv?: string
+  context?: string
+  /** Capy/Geetest API server override */
+  apiServer?: string
+  /** Turnstile-specific fields */
+  cData?: string // Turnstile cData parameter (maps to 'data' in2captcha API)
+  chlPageData?: string // Turnstile chlPageData parameter (maps to 'pagedata' in2captcha API)
   display?: {
     size?: string
     theme?: string
@@ -87,6 +233,8 @@ export interface CaptchaInfo {
     width?: string
     height?: string
   }
+  /** Fingerprint for race condition detection (Turnstile) */
+  fingerprint?: CaptchaFingerprint
 }
 
 export type FilteredCaptcha = CaptchaInfo & {
@@ -108,6 +256,10 @@ export interface CaptchaSolution {
   duration?: number
   error?: string | Error
   hasSolution?: boolean
+  /** Fingerprint for race condition detection (Turnstile) */
+  fingerprint?: CaptchaFingerprint
+  /** Widget ID for correlation */
+  widgetId?: number
 }
 
 export interface CaptchaSolved {
@@ -143,4 +295,76 @@ export interface ContentScriptOpts {
 
 export interface ContentScriptData {
   solutions?: CaptchaSolution[]
+  navigationId?: string
+}
+
+/**
+ * Fingerprint for captcha challenge identification
+ * Used to detect race conditions when page refreshes during solving
+ */
+export interface CaptchaFingerprint {
+  /** Navigation ID when captcha was detected */
+  navigationId: string
+  /** Sitekey of the captcha */
+  sitekey: string
+  /** Hash of cData parameter if available */
+  cDataHash?: string
+  /** Hash of chlPageData parameter if available */
+  chlPageDataHash?: string
+  /** Timestamp when captcha was detected */
+  timestamp: number
+  /** Widget ID for correlation */
+  widgetId?: number
+}
+
+/**
+ * Solution state for tracking through the solve lifecycle
+ */
+export type SolutionState = 'pending' | 'ready' | 'applied' | 'invalidated'
+
+/**
+ * Tracked solution with state and fingerprint
+ */
+export interface TrackedSolution {
+  solution: CaptchaSolution
+  fingerprint: CaptchaFingerprint
+  status: SolutionState
+  invalidateReason?: 'page_navigation' | 'fingerprint_mismatch'
+}
+
+/**
+ * Result of solution verification
+ */
+export interface SolutionVerificationResult {
+  valid: boolean
+  currentFingerprint?: CaptchaFingerprint
+  reason?: string
+}
+
+/**
+ * Extended widget info with fingerprint data
+ */
+export interface TurnstileWidgetInfoWithFingerprint extends TurnstileWidgetInfo {
+  /** Navigation ID when widget was created */
+  navigationId: string
+  /** Timestamp when widget was created */
+  detectedAt: number
+  /** Hash of cData for fingerprinting */
+  cDataHash?: string
+  /** Hash of chlPageData for fingerprinting */
+  chlPageDataHash?: string
+}
+
+/**
+ * Navigation event data
+ */
+export interface NavigationEvent {
+  /** Unique navigation ID */
+  navigationId: string
+  /** Previous navigation ID (if any) */
+  previousNavigationId?: string
+  /** Timestamp of navigation */
+  timestamp: number
+  /** URL being navigated to */
+  url?: string
 }
