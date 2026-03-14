@@ -1,6 +1,24 @@
-# puppeteer-extra-plugin-recaptcha [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/berstend/puppeteer-extra/test.yml?branch=master&event=push) [![Discord](https://img.shields.io/discord/737009125862408274)](https://extra.community) [![npm](https://img.shields.io/npm/dt/puppeteer-extra-plugin-recaptcha.svg)](https://www.npmjs.com/package/puppeteer-extra-plugin-recaptcha) [![npm](https://img.shields.io/npm/v/puppeteer-extra-plugin-recaptcha.svg)](https://www.npmjs.com/package/puppeteer-extra-plugin-recaptcha)
+# @ductridev/puppeteer-extra-plugin-recaptcha [![npm](https://img.shields.io/npm/v/@ductridev/puppeteer-extra-plugin-recaptcha.svg)](https://www.npmjs.com/package/@ductridev/puppeteer-extra-plugin-recaptcha) [![npm](https://img.shields.io/npm/dt/@ductridev/puppeteer-extra-plugin-recaptcha.svg)](https://www.npmjs.com/package/@ductridev/puppeteer-extra-plugin-recaptcha)
 
-> A [puppeteer-extra](https://github.com/berstend/puppeteer-extra/tree/master/packages/puppeteer-extra) and [playwright-extra](https://github.com/berstend/puppeteer-extra/tree/master/packages/playwright-extra) plugin to solve reCAPTCHAs and hCaptchas automatically.
+# 🔔 Fork Notice
+
+This is a fork of [puppeteer-extra-plugin-recaptcha](https://github.com/berstend/puppeteer-extra/tree/master/packages/puppeteer-extra-plugin-recaptcha) with the following improvements:
+
+- **Fixed TypeScript errors** - Added compatibility layer for CDP sessions that works with both Puppeteer and Playwright
+- **Updated dependencies** - Dependencies updated to newer versions for better compatibility
+- **Published as** `@ductridev/puppeteer-extra-plugin-recaptcha`
+
+**Repository:** [ductridev/puppeteer-extra-plugin-recaptcha](https://github.com/ductridev/puppeteer-extra-plugin-recaptcha)
+
+## Installation
+
+```bash
+npm install @ductridev/puppeteer-extra-plugin-recaptcha
+```
+
+---
+
+> A [puppeteer-extra](https://github.com/berstend/puppeteer-extra/tree/master/packages/puppeteer-extra) and [playwright-extra](https://github.com/berstend/puppeteer-extra/tree/master/packages/playwright-extra) plugin to solve captchas automatically. Supports reCAPTCHA, hCaptcha, Cloudflare Turnstile, GeeTest, ArkoseLabs FunCaptcha, Amazon WAF, Yandex Smart Captcha, Capy Puzzle, Lemin, KeyCaptcha, and normal image captchas. But **note** that only reCAPTCHA, hCaptcha and Cloudflare Turnstile has been tested. Open an issue if you see problem.
 
 ![](https://i.imgur.com/SWrIQw0.gif)
 
@@ -152,6 +170,27 @@ In any case I strongly feel that captchas in their current form have failed. The
 
 > Note: Since `v3.3.0` the plugin will solve [hCaptchas](https://www.hcaptcha.com/) as well, as they've gained significant marketshare through their Cloudflare partnership.
 
+## Supported Captcha Types
+
+This plugin supports the following captcha types:
+
+| Captcha Type | Vendor | Description |
+|-------------|--------|-------------|
+| reCAPTCHA | `recaptcha` | Google reCAPTCHA v2, v3, and invisible |
+| hCaptcha | `hcaptcha` | hCaptcha and invisible hCaptcha |
+| Cloudflare Turnstile | `turnstile` | Cloudflare's Turnstile captcha |
+| GeeTest V4 | `geetest_v4` | GeeTest version 4 slider captcha |
+| GeeTest | `geetest` | GeeTest version 3 slider captcha |
+| ArkoseLabs (FunCaptcha) | `arkoselabs` | ArkoseLabs FunCaptcha |
+| Amazon WAF | `amazon_waf` | Amazon WAF captcha |
+| Yandex Smart Captcha | `yandex` | Yandex Smart Captcha |
+| Capy Puzzle | `capy` | Capy puzzle captcha |
+| Lemin | `lemin` | Lemin cropped puzzle captcha |
+| KeyCaptcha | `keycaptcha` | KeyCaptcha puzzle |
+| Normal (Image) | `normal` | Standard image-based captchas |
+
+All captcha types are automatically detected and solved when calling `page.solveRecaptchas()`.
+
 ## Provider
 
 I thought about having the plugin solve captchas directly (e.g. using the [audio challenge](https://github.com/dessant/buster) and speech-to-text APIs), but external solution providers are so cheap and reliable that there is really no benefit in doing that. ¯\\\_(ツ)\_/¯
@@ -174,7 +213,7 @@ You can easily use your own provider as well, by providing the plugin a function
 
 ### How does this work?
 
-- When summoned with `page.solveRecaptchas()` the plugin will attempt to find any active reCAPTCHAs & hCaptchas, extract their configuration, pass that on to the specified solutions provider, take the solutions and put them back into the page (triggering any callback that might be required).
+- When summoned with `page.solveRecaptchas()` the plugin will attempt to find any active captchas (reCAPTCHA, hCaptcha, Turnstile, GeeTest, ArkoseLabs, Amazon WAF, Yandex, Capy, Lemin, KeyCaptcha, and normal image captchas), extract their configuration, pass that on to the specified solutions provider, take the solutions and put them back into the page (triggering any callback that might be required).
 
 ### Is this production ready?
 
@@ -188,12 +227,12 @@ You can easily use your own provider as well, by providing the plugin a function
 
 ### Are ordinary image captchas supported as well?
 
-- No. This plugin focusses on reCAPTCHAs and hCaptchas exclusively, with the benefit of being fully automatic. 🔮
+- Yes! Since `v3.7.0` the plugin supports normal/image captchas in addition to reCAPTCHAs and hCaptchas. The plugin now supports 12 different captcha types including Cloudflare Turnstile, GeeTest, ArkoseLabs FunCaptcha, Amazon WAF, Yandex Smart Captcha, Capy Puzzle, Lemin, KeyCaptcha, and normal image captchas.
 
 ### What about invisible reCAPTCHAs?
 
 - [Invisible reCAPTCHAs](https://developers.google.com/recaptcha/docs/invisible) are supported. They're basically used to compute a score of how likely the user is a bot. Based on that score the site owner can block access to resources or (most often) present the user with a reCAPTCHA challenge (which this plugin can solve). The [stealth plugin](https://github.com/berstend/puppeteer-extra/tree/master/packages/puppeteer-extra-plugin-stealth) might be of interest here, as it masks the usage of puppeteer.
-- Technically speaking the plugin supports: reCAPTCHA v2, reCAPTCHA v3, invisible reCAPTCHA, hCaptcha, invisible hCaptcha. All of those (multiple as well) are solved when `page.solveRecaptchas()` is called.
+- Technically speaking the plugin supports: reCAPTCHA v2, reCAPTCHA v3, invisible reCAPTCHA, hCaptcha, invisible hCaptcha, Cloudflare Turnstile, GeeTest V4, GeeTest V3, ArkoseLabs FunCaptcha, Amazon WAF, Yandex Smart Captcha, Capy Puzzle, Lemin, KeyCaptcha, and normal image captchas. All of those (multiple as well) are solved when `page.solveRecaptchas()` is called.
 
 ### When should I call `page.solveRecaptchas()`?
 
