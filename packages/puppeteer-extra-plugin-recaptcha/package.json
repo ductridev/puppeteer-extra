@@ -1,6 +1,6 @@
 {
-  "name": "puppeteer-extra-plugin-recaptcha",
-  "version": "3.6.8",
+  "name": "@ductridev/puppeteer-extra-plugin-recaptcha",
+  "version": "3.7.0",
   "description": "A puppeteer-extra plugin to solve reCAPTCHAs and hCaptchas automatically.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
@@ -8,15 +8,24 @@
   "files": [
     "dist"
   ],
-  "repository": "berstend/puppeteer-extra",
-  "homepage": "https://github.com/berstend/puppeteer-extra/tree/master/packages/puppeteer-extra-plugin-recaptcha",
-  "author": "berstend",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ductridev/puppeteer-extra-plugin-recaptcha.git"
+  },
+  "homepage": "https://github.com/ductridev/puppeteer-extra-plugin-recaptcha#readme",
+  "bugs": {
+    "url": "https://github.com/ductridev/puppeteer-extra-plugin-recaptcha/issues"
+  },
+  "author": "ductridev",
   "license": "MIT",
   "scripts": {
     "clean": "rimraf dist",
     "tscheck": "tsc --pretty --noEmit",
     "prebuild": "run-s clean",
-    "build": "run-s build:tsc build:rollup ambient-dts",
+    "build": "run-s build:tsc build:rollup",
     "build:tsc": "tsc --project tsconfig.json --module commonjs",
     "build:rollup": "rollup -c rollup.config.ts",
     "docs": "node -e 0",
@@ -24,10 +33,7 @@
     "docs2": "typedoc --module commonjs --readme none --target ES6 --theme markdown --excludeNotExported --excludeExternals --excludePrivate --out docs --mode file src/index.ts",
     "test": "ava -v --config ava.config-ts.js",
     "pretest-ci": "run-s build",
-    "test-ci": "ava --fail-fast --concurrency 2 -v",
-    "ambient-dts": "run-s ambient-dts-copy ambient-dts-fix-path",
-    "ambient-dts-copy": "copyfiles -u 1 \"src/**/*.d.ts\" dist",
-    "ambient-dts-fix-path": "replace-in-files --string='/// <reference path=\"../src/' --replacement='/// <reference path=\"../dist/' 'dist/**/*.d.ts'"
+    "test-ci": "ava --fail-fast --concurrency 2 -v"
   },
   "engines": {
     "node": ">=22"
@@ -84,6 +90,5 @@
     "playwright-extra": {
       "optional": true
     }
-  },
-  "gitHead": "babb041828cab50c525e0b9aab02d58f73416ef3"
+  }
 }
